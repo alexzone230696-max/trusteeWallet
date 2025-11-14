@@ -5,25 +5,22 @@ workflows:
 
     environment:
       node: 18
-      npm: latest
+      npm: 9          # ← ставим совместимую версию, НЕ latest
       vars:
         APP_NAME: ReactNativeApp
       java: 17
 
     scripts:
-      # Установка зависимостей для React Native
       - name: Install JS dependencies
         script: |
           npm install
 
-      # Установка зависимостей Android
       - name: Install Android dependencies
         script: |
           cd android
           chmod +x ./gradlew
           ./gradlew clean
 
-      # Сборка Debug APK
       - name: Build Debug APK
         script: |
           cd android
