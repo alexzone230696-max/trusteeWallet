@@ -1,0 +1,67 @@
+name: Build TrusteeWallet APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      ANDROID_HOME: ${{ github.workspace }}/androidsdk
+      PATH: ${{ github.workspace }}/androidsdk/cmdline-tools/latest/bin:$PATH
+
+    steps:
+      # 1. Получаем репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем базовые инструменты
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y curl git unzip openjdk-17-jdk nodejs npm
+          curl -sL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.8/install.sh | bash
+          source ~/.bashrc
+          nvm install 16
+          nvm use 16
+          node -v
+          npm -v
+
+      # 3. Подготовка Android SDK
+      - name: Setup Android SDK
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip
+          rm cmdline-tools.zip
+          mkdir -p $ANDROID_HOME/licenses
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      # 4. Устанавливаем зависимости проекта
+      - name: Install Node dependencies
+        run: |
+          cd $GITHUB_WORKSPACE
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
+          npx jetifier
+          ./node_modules/.bin/rn-nodeify --hack --install
+
+      # 5. Сборка APK
+      - name: Build APK
+        run: |
+          cd $GITHUB_WORKSPACE/android
+          ./gradlew assembleRelease
+
+      # 6. Загружаем APK как артефакт
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: trusteewallet-apk
+          path: $GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk
