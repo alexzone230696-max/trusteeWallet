@@ -16,11 +16,13 @@ jobs:
       PATH: ${{ github.workspace }}/androidsdk/cmdline-tools/latest/bin:$PATH
 
     steps:
-      # 1. Checkout репозитория через Git, чтобы не использовать архив (обходит проблему с tar)
+      # 1. Checkout репозитория через Git напрямую
       - name: Checkout repository via Git
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Используем полный Git, tar не нужен
+          fetch-depth: 0       # полный git history, чтобы не использовать архив
+          submodules: recursive
+          persist-credentials: true
 
       # 2. Setup Node.js через официальный action
       - name: Setup Node.js
