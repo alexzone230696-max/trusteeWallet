@@ -16,17 +16,19 @@ jobs:
       PATH: ${{ github.workspace }}/androidsdk/cmdline-tools/latest/bin:$PATH
 
     steps:
-      # 1. Checkout repository
-      - name: Checkout repository
+      # 1. Checkout репозитория через Git, чтобы не использовать архив (обходит проблему с tar)
+      - name: Checkout repository via Git
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Используем полный Git, tar не нужен
 
-      # 2. Setup Node.js (через официальный action)
+      # 2. Setup Node.js через официальный action
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 16
 
-      # 3. Setup Java
+      # 3. Setup Java через официальный action
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
@@ -46,7 +48,7 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # 5. Node dependencies
+      # 5. Установка зависимостей Node.js проекта
       - name: Install Node dependencies
         run: |
           cd $GITHUB_WORKSPACE
@@ -55,13 +57,13 @@ jobs:
           npx jetifier
           ./node_modules/.bin/rn-nodeify --hack --install
 
-      # 6. Build APK
+      # 6. Сборка APK
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE/android
           ./gradlew assembleRelease
 
-      # 7. Upload APK
+      # 7. Загрузка APK как артефакт
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
