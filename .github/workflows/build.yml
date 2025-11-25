@@ -16,11 +16,11 @@ jobs:
       PATH: ${{ github.workspace }}/androidsdk/cmdline-tools/latest/bin:$PATH
 
     steps:
-      # 0. Устанавливаем tar, unzip и wget, чтобы checkout и SDK работали
+      # 0. Устанавливаем базовые инструменты
       - name: Install basic tools
         run: |
-          sudo apt update
-          sudo apt install -y tar unzip wget curl git
+          apt update
+          apt install -y tar unzip wget curl git
 
       # 1. Получаем репозиторий
       - name: Checkout repository
@@ -29,10 +29,11 @@ jobs:
       # 2. Устанавливаем Node.js LTS через nvm и OpenJDK 17
       - name: Setup Node.js and Java
         run: |
-          sudo apt update
-          sudo apt install -y openjdk-17-jdk
+          apt update
+          apt install -y openjdk-17-jdk
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.8/install.sh | bash
-          source ~/.bashrc
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           nvm install 16
           nvm use 16
           node -v
@@ -69,7 +70,7 @@ jobs:
 
       # 6. Загружаем APK как артефакт
       - name: Upload APK
-        uses: actions/upload-artifact@v4   # ✅ актуальная версия
+        uses: actions/upload-artifact@v4
         with:
           name: trusteewallet-apk
           path: $GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk
