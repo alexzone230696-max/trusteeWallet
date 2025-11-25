@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:   # ✅ позволяет запуск вручную
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,31 +16,24 @@ jobs:
       PATH: ${{ github.workspace }}/androidsdk/cmdline-tools/latest/bin:$PATH
 
     steps:
-      # 0. Устанавливаем базовые инструменты
-      - name: Install basic tools
-        run: |
-          apt update
-          apt install -y tar unzip wget curl git
-
-      # 1. Получаем репозиторий
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Устанавливаем Node.js LTS через nvm и OpenJDK 17
-      - name: Setup Node.js and Java
-        run: |
-          apt update
-          apt install -y openjdk-17-jdk
-          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.8/install.sh | bash
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          nvm install 16
-          nvm use 16
-          node -v
-          npm -v
-          java -version
+      # 2. Setup Node.js (через официальный action)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
 
-      # 3. Подготовка Android SDK
+      # 3. Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # 4. Подготовка Android SDK
       - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -53,7 +46,7 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # 4. Устанавливаем зависимости Node.js проекта
+      # 5. Node dependencies
       - name: Install Node dependencies
         run: |
           cd $GITHUB_WORKSPACE
@@ -62,13 +55,13 @@ jobs:
           npx jetifier
           ./node_modules/.bin/rn-nodeify --hack --install
 
-      # 5. Сборка APK
+      # 6. Build APK
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE/android
           ./gradlew assembleRelease
 
-      # 6. Загружаем APK как артефакт
+      # 7. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
