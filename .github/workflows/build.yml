@@ -1,12 +1,11 @@
-name: Build APK
+name: Build TrusteeWallet APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
-workflow_dispatch:
-
+    branches: [ main ]
+  workflow_dispatch:  # ✅ ручной запуск через GitHub UI
 
 jobs:
   build:
@@ -17,36 +16,54 @@ jobs:
       PATH: ${{ github.workspace }}/androidsdk/cmdline-tools/latest/bin:$PATH
 
     steps:
-      # 1. Установка Git (для корректной работы submodules)
-      - name: Install Git
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git
-          git --version
+      # 1. Checkout репозитория через Git напрямую
+      - name: Checkout repository via Git
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # полный git history
+          persist-credentials: true
 
-      # 2. Проверяем, что Java установлена
+      # 2. Setup Node.js через официальный action
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      # 3. Setup Java через официальный action
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
-      # 3. Checkout с подмодулями
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
-          persist-credentials: true
-          clean: true
-
-      # 4. Устанавливаем Android SDK
+      # 4. Подготовка Android SDK
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          api-level: 33
-          build-tools: 33.0.2
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip
+          rm cmdline-tools.zip
+          mkdir -p $ANDROID_HOME/licenses
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # 5. Собираем Release APK
-      - name: Build Release APK
-        run: ./gradlew clean assembleRelease --no-daemon --stacktrace
+      # 5. Установка зависимостей Node.js проекта
+      - name: Install Node dependencies
+        run: |
+          cd $GITHUB_WORKSPACE
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
+          npx jetifier
+          ./node_modules/.bin/rn-nodeify --hack --install
+
+      # 6. Сборка APK
+      - name: Build APK
+        run: |
+          cd $GITHUB_WORKSPACE/android
+          ./gradlew assembleRelease
+
+      # 7. Загрузка APK как артефакт
+      - name: Upload APK
+        uses:
